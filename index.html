@@ -1,1 +1,133 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NQF & Accreditation Dashboard</title><link rel="stylesheet" href="style.css"></head><body><main class="wrap"><section class="hero"><h1>لوحة متابعة التسكين NQF والاعتماد الأردني</h1><p>Dashboard تفاعلي لبرامج الجامعة حسب الكلية، الدرجة، الحالة، الطاقة الاستيعابية، والأولوية.</p></section><section class="toolbar"><input id="q" placeholder="بحث باسم البرنامج، الكلية، القسم..."><select id="college"></select><select id="degree"></select><select id="status"><option value="">كل الحالات</option><option>مستمر</option><option>موقوف</option><option>موقوف دائم</option></select><select id="priority"><option value="">كل الأولويات</option><option>عالية</option><option>متوسطة</option><option>منخفضة</option></select><button id="exportCsv">تصدير النتائج CSV</button></section><section class="cards"><div class="card"><div class="label">إجمالي البرامج</div><div class="num" id="total">0</div></div><div class="card"><div class="label">البرامج المستمرة</div><div class="num" id="active">0</div></div><div class="card"><div class="label">عدد الكليات</div><div class="num" id="collegesCount">0</div></div><div class="card"><div class="label">برامج البكالوريوس</div><div class="num" id="bachelor">0</div></div><div class="card"><div class="label">الطاقة الاستيعابية</div><div class="num" id="capacity">0</div></div></section><section class="grid"><div class="card chart"><h3>البرامج حسب الكلية</h3><div id="collegeChart"></div></div><div class="card chart"><h3>البرامج حسب الدرجة</h3><div id="degreeChart"></div></div><div class="card chart"><h3>حالة البرامج</h3><div id="statusChart"></div></div><div class="card chart"><h3>الأولوية</h3><div id="priorityChart"></div></div></section><section class="table-wrap"><div class="topline"><h3>قائمة البرامج</h3><span>عدد النتائج: <b id="rowsCount">0</b></span></div><table><thead><tr><th>#</th><th>البرنامج</th><th>الدرجة</th><th>الكلية</th><th>القسم</th><th>حالة البرنامج</th><th>الطاقة</th><th>NQF</th><th>الاعتماد</th><th>الأولوية</th></tr></thead><tbody id="tbody"></tbody></table></section><footer>يمكن تحديث البيانات من ملف app.js أو ربطها لاحقاً بملف JSON/Google Sheet.</footer></main><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>نظام متابعة التسكين والاعتماد</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>نظام متابعة التسكين NQF والاعتماد الأردني</h1>
+      <p>لوحة تفاعلية لإدخال وتحديث ومتابعة حالة البرامج الأكاديمية.</p>
+    </div>
+    <div class="top-actions">
+      <button id="saveBtn">حفظ التعديلات</button>
+      <button id="exportJsonBtn">تصدير JSON</button>
+      <button id="exportCsvBtn">تصدير CSV</button>
+      <label class="upload">استيراد JSON<input id="importJson" type="file" accept=".json" hidden></label>
+      <button id="resetBtn" class="danger">إعادة ضبط</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="cards">
+      <div class="card"><span id="totalPrograms">0</span><small>إجمالي البرامج</small></div>
+      <div class="card"><span id="notAccredited">0</span><small>لم تعتمد بعد</small></div>
+      <div class="card"><span id="accReturned">0</span><small>اعتماد عاد للتعديل</small></div>
+      <div class="card"><span id="nqfNotDone">0</span><small>تسكين غير مكتمل</small></div>
+      <div class="card"><span id="nqfReturned">0</span><small>تسكين عاد للتعديل</small></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">
+        <h2>الفلاتر والبحث</h2>
+        <button id="addBtn">+ إضافة برنامج</button>
+      </div>
+      <div class="filters">
+        <input id="searchInput" placeholder="ابحث باسم البرنامج، الكلية، القسم..." />
+        <select id="collegeFilter"><option value="">كل الكليات</option></select>
+        <select id="degreeFilter"><option value="">كل الدرجات</option></select>
+        <select id="nqfFilter"><option value="">كل حالات NQF</option></select>
+        <select id="accFilter"><option value="">كل حالات الاعتماد</option></select>
+        <select id="reportFilter">
+          <option value="">كل البرامج</option>
+          <option value="not-accredited">البرامج غير المعتمدة</option>
+          <option value="acc-returned">الاعتماد عاد للتعديل</option>
+          <option value="nqf-not-done">التسكين غير المكتمل</option>
+          <option value="nqf-returned">التسكين عاد للتعديل</option>
+          <option value="urgent">الأولوية العالية</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">
+        <h2>جدول المتابعة</h2>
+        <span id="resultCount"></span>
+      </div>
+      <div class="table-wrap">
+        <table id="programTable">
+          <thead>
+            <tr>
+              <th>ت</th>
+              <th>البرنامج</th>
+              <th>الدرجة</th>
+              <th>الكلية</th>
+              <th>القسم</th>
+              <th>حالة NQF</th>
+              <th>نتيجة تدقيق NQF</th>
+              <th>حالة الاعتماد</th>
+              <th>نتيجة تدقيق الاعتماد</th>
+              <th>الأولوية</th>
+              <th>آخر تحديث</th>
+              <th>إجراء</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <dialog id="editDialog">
+      <form method="dialog" id="editForm">
+        <h2 id="dialogTitle">تحديث برنامج</h2>
+        <input type="hidden" id="editId">
+        <div class="form-grid">
+          <label>اسم البرنامج<input id="nameAr"></label>
+          <label>الدرجة<input id="degree"></label>
+          <label>الكلية<input id="college"></label>
+          <label>القسم<input id="department"></label>
+          <label>حالة البرنامج
+            <select id="programStatus"></select>
+          </label>
+          <label>الأولوية
+            <select id="priority"></select>
+          </label>
+
+          <label>حالة NQF
+            <select id="nqfStatus"></select>
+          </label>
+          <label>نتيجة تدقيق NQF
+            <select id="nqfReviewResult"></select>
+          </label>
+          <label>تاريخ استلام NQF<input id="nqfReceivedDate" type="date"></label>
+          <label>تاريخ تدقيق NQF<input id="nqfReviewedDate" type="date"></label>
+          <label>تاريخ إرسال NQF للهيئة<input id="nqfSentDate" type="date"></label>
+
+          <label>حالة الاعتماد
+            <select id="accreditationStatus"></select>
+          </label>
+          <label>نتيجة تدقيق الاعتماد
+            <select id="accreditationReviewResult"></select>
+          </label>
+          <label>تاريخ استلام الاعتماد<input id="accreditationReceivedDate" type="date"></label>
+          <label>تاريخ تدقيق الاعتماد<input id="accreditationReviewedDate" type="date"></label>
+          <label>تاريخ إرسال الاعتماد للهيئة<input id="accreditationSentDate" type="date"></label>
+
+          <label>المسؤول<input id="owner"></label>
+          <label class="wide">ملاحظات<textarea id="notes" rows="3"></textarea></label>
+        </div>
+        <div class="dialog-actions">
+          <button type="submit" id="commitEdit">حفظ</button>
+          <button type="button" id="cancelEdit">إلغاء</button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
